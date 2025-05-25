@@ -12,11 +12,11 @@
         <h2>Nos Formations</h2>
         
         <!-- Filter form -->
-        <form method="GET" class="filter-form">
-            <select name="domaine">
+        <form method="GET" class="filter-form" id="filterForm">
+            <select name="domaine" id="domaine" onchange="filterFormations()">
                 <option value="">Tous les domaines</option>
                 <?php
-                $query = $bdd->query("SELECT * FROM domaines");
+                $query = $bdd->query("SELECT * FROM domaines ORDER BY name");
                 while($domaine = $query->fetch()) {
                     $selected = (isset($_GET['domaine']) && $_GET['domaine'] == $domaine['id']) ? 'selected' : '';
                     echo "<option value='".$domaine['id']."' $selected>".$domaine['name']."</option>";
@@ -24,61 +24,113 @@
                 ?>
             </select>
             
-            <select name="ville">
+            <select name="sujet" id="sujet" onchange="filterFormations()">
+                <option value="">Tous les sujets</option>
+            </select>
+            
+            <select name="cours" id="cours" onchange="filterFormations()">
+                <option value="">Tous les cours</option>
+            </select>
+            
+            <select name="ville" id="ville" onchange="filterFormations()">
                 <option value="">Toutes les villes</option>
                 <?php
-                $query = $bdd->query("SELECT * FROM villes");
+                $query = $bdd->query("SELECT v.*, p.value as pays_name 
+                                     FROM villes v 
+                                     JOIN pays p ON v.pays_id = p.id 
+                                     ORDER BY p.value, v.value");
                 while($ville = $query->fetch()) {
                     $selected = (isset($_GET['ville']) && $_GET['ville'] == $ville['id']) ? 'selected' : '';
-                    echo "<option value='".$ville['id']."' $selected>".$ville['value']."</option>";
+                    echo "<option value='".$ville['id']."' $selected>".$ville['pays_name']." - ".$ville['value']."</option>";
                 }
                 ?>
             </select>
             
-            <button type="submit" class="btn">Filtrer</button>
+            <input type="text" name="search" id="search" placeholder="Rechercher..." 
+                   value="<?php echo isset($_GET['search']) ? $_GET['search'] : ''; ?>" 
+                   onkeyup="filterFormations()">
         </form>
         
+        <!-- Loader -->
+        <div id="loader" class="spinner" style="display: none;"></div>
+        
         <!-- Display formations -->
-        <div class="formations-grid">
-        <?php
-        $sql = "SELECT f.*, c.name as cours_name, v.value as ville_name, 
-                s.name as sujet_name, d.name as domaine_name,
-                GROUP_CONCAT(fd.date) as dates
-                FROM formations f 
-                JOIN cours c ON f.cours_id = c.id 
-                JOIN villes v ON f.ville_id = v.id
-                JOIN sujets s ON c.sujet_id = s.id
-                JOIN domaines d ON s.domaine_id = d.id
-                LEFT JOIN formation_dates fd ON f.id = fd.formation_id
-                WHERE 1=1";
-        
-        // Add filters
-        if(isset($_GET['domaine']) && $_GET['domaine'] != '') {
-            $sql .= " AND d.id = " . intval($_GET['domaine']);
-        }
-        if(isset($_GET['ville']) && $_GET['ville'] != '') {
-            $sql .= " AND v.id = " . intval($_GET['ville']);
-        }
-        
-        $sql .= " GROUP BY f.id";
-        
-        $formations = $bdd->query($sql);
-        while($formation = $formations->fetch()) {
-            echo "<div class='formation-card'>";
-            echo "<h3>".$formation['cours_name']."</h3>";
-            echo "<p><strong>Domaine:</strong> ".$formation['domaine_name']."</p>";
-            echo "<p><strong>Sujet:</strong> ".$formation['sujet_name']."</p>";
-            echo "<p><strong>Ville:</strong> ".$formation['ville_name']."</p>";
-            echo "<p><strong>Prix:</strong> ".$formation['price']." DH</p>";
-            echo "<p><strong>Mode:</strong> ".$formation['mode']."</p>";
-            if($formation['dates']) {
-                echo "<p><strong>Dates:</strong> ".str_replace(',', ', ', $formation['dates'])."</p>";
-            }
-            echo "<a href='inscription.php?id=".$formation['id']."' class='btn'>S'inscrire</a>";
-            echo "</div>";
-        }
-        ?>
+        <div class="formations-grid" id="formationsContainer">
+            <!-- Formations will be loaded here -->
         </div>
     </div>
+    
+    <script>
+    // Load initial data
+    window.onload = function() {
+        loadSujets();
+        loadCours();
+        filterFormations();
+    };
+    
+    // Load sujets based on selected domaine
+    function loadSujets() {
+        var domaine_id = document.getElementById('domaine').value;
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'ajax/get_sujets.php?domaine_id=' + domaine_id, true);
+        xhr.onload = function() {
+            if(this.status == 200) {
+                document.getElementById('sujet').innerHTML = this.responseText;
+                loadCours(); // Reload cours when sujet changes
+            }
+        };
+        xhr.send();
+    }
+    
+    // Load cours based on selected sujet
+    function loadCours() {
+        var sujet_id = document.getElementById('sujet').value;
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'ajax/get_cours.php?sujet_id=' + sujet_id, true);
+        xhr.onload = function() {
+            if(this.status == 200) {
+                document.getElementById('cours').innerHTML = this.responseText;
+            }
+        };
+        xhr.send();
+    }
+    
+    // Filter formations
+    function filterFormations() {
+        var domaine = document.getElementById('domaine').value;
+        var sujet = document.getElementById('sujet').value;
+        var cours = document.getElementById('cours').value;
+        var ville = document.getElementById('ville').value;
+        var search = document.getElementById('search').value;
+        
+        // Show loader
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('formationsContainer').style.opacity = '0.5';
+        
+        var xhr = new XMLHttpRequest();
+        var params = 'domaine=' + domaine + '&sujet=' + sujet + '&cours=' + cours + 
+                     '&ville=' + ville + '&search=' + search;
+        
+        xhr.open('GET', 'ajax/filter_formations.php?' + params, true);
+        xhr.onload = function() {
+            if(this.status == 200) {
+                document.getElementById('formationsContainer').innerHTML = this.responseText;
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('formationsContainer').style.opacity = '1';
+            }
+        };
+        xhr.send();
+    }
+    
+    // Update filters when domaine changes
+    document.getElementById('domaine').addEventListener('change', function() {
+        loadSujets();
+    });
+    
+    // Update filters when sujet changes
+    document.getElementById('sujet').addEventListener('change', function() {
+        loadCours();
+    });
+    </script>
 </body>
 </html>
