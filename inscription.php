@@ -14,7 +14,9 @@ if(isset($_POST['submit'])) {
     $stmt = $bdd->prepare($sql);
     $stmt->execute([$formation_id, $firstName, $lastName, $email, $phone, $company]);
     
-    echo "<script>alert('Inscription réussie!');</script>";
+    // TODO: Add email functionality here
+    
+    echo "<script>alert('Inscription réussie!'); window.location.href='formations.php';</script>";
 }
 ?>
 <!DOCTYPE html>
@@ -24,16 +26,19 @@ if(isset($_POST['submit'])) {
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <?php include 'includes/header.php'; ?>
+    
     <div class="container">
         <h2>Formulaire d'inscription</h2>
-        <form method="POST">
+        <form method="POST" onsubmit="return validateForm()">
             <input type="text" name="firstName" placeholder="Prénom" required>
             <input type="text" name="lastName" placeholder="Nom" required>
-            <input type="email" name="email" placeholder="Email" required>
+            <input type="email" name="email" id="email" placeholder="Email" required>
             <input type="tel" name="phone" placeholder="Téléphone" required>
             <input type="text" name="company" placeholder="Entreprise">
             <button type="submit" name="submit" class="btn">S'inscrire</button>
         </form>
     </div>
+    <script src="js/validation.js"></script>
 </body>
 </html>
