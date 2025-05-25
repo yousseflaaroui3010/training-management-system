@@ -11,23 +11,26 @@ function sendEmail($to, $subject, $body) {
     $mail = new PHPMailer(true);
 
     try {
-        
-        // SMTP settings
+        // Mailtrap SMTP settings
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = 'sandbox.smtp.mailtrap.io';
         $mail->SMTPAuth   = true;
-        
-        // YOUR GMAIL EMAIL HERE
-    $phpmailer = new PHPMailer();
-    $phpmailer->isSMTP();
-    $phpmailer->Host = 'live.smtp.mailtrap.io';
-    $phpmailer->SMTPAuth = true;
-    $phpmailer->Port = 587;
-    $phpmailer->Username = 'api';
-    $phpmailer->Password = '<YOUR_API_TOKEN>';
+        $mail->Username   = 'ea7c7a7106ce7e';  // Replace with your username
+        $mail->Password   = 'feebe61a280e72';  // Replace with your password
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 2525;
+
+        // Email settings
+        $mail->setFrom('contact@formation-center.ma', 'Centre de Formation');
+        $mail->addAddress($to);
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body    = $body;
+
+        $mail->send();
         return true;
     } catch (Exception $e) {
-        // For debugging: echo "Error: {$mail->ErrorInfo}";
+        error_log("Email error: " . $mail->ErrorInfo);
         return false;
     }
 }
